@@ -217,7 +217,11 @@ public class SpeechToTextPlugin :
                                 "listenMode is required", null)
                         return
                     }
-                    startListening(result, localeId, partialResults, listenModeIndex, onDevice )
+                    var autoPunctuation = call.argument<Boolean>("autoPunctuation")
+                    if (null == autoPunctuation ) {
+                        autoPunctuation = false
+                    } 
+                    startListening(result, localeId, partialResults, listenModeIndex, onDevice, autoPunctuation )
                 }
                 "stop" -> stopListening(result)
                 "cancel" -> cancelListening(result)
@@ -281,7 +285,7 @@ public class SpeechToTextPlugin :
     }
 
     private fun startListening(result: Result, languageTag: String, partialResults: Boolean,
-                               listenModeIndex: Int, onDevice: Boolean) {
+                               listenModeIndex: Int, onDevice: Boolean, autoPunctuation: Boolean) {
         if (sdkVersionTooLow() || isNotInitialized() || isListening()) {
             result.success(false)
             return
@@ -296,7 +300,7 @@ public class SpeechToTextPlugin :
             listenMode = ListenMode.dictation
         }
         optionallyStartBluetooth()
-        setupRecognizerIntent(languageTag, partialResults, listenMode, onDevice )
+        setupRecognizerIntent(languageTag, partialResults, listenMode, onDevice, autoPunctuation )
         handler.post {
             run {
                 speechRecognizer?.startListening(recognizerIntent)
@@ -636,11 +640,11 @@ public class SpeechToTextPlugin :
             }
         }
         debugLog("before setup intent")
-        setupRecognizerIntent(defaultLanguageTag, true, ListenMode.deviceDefault, false )
+        setupRecognizerIntent(defaultLanguageTag, true, ListenMode.deviceDefault, false, false )
         debugLog("after setup intent")
     }
 
-    private fun setupRecognizerIntent(languageTag: String, partialResults: Boolean, listenMode: ListenMode, onDevice: Boolean ) {
+    private fun setupRecognizerIntent(languageTag: String, partialResults: Boolean, listenMode: ListenMode, onDevice: Boolean, autoPunctuation: Boolean ) {
         debugLog("setupRecognizerIntent")
         if (previousRecognizerLang == null ||
                 previousRecognizerLang != languageTag ||
@@ -668,6 +672,9 @@ public class SpeechToTextPlugin :
                         }
                         if ( onDevice ) {
                             putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, onDevice );
+                        }
+                        if ( autoPunctuation ) {
+                            putExtra(RecognizerIntent.EXTRA_ENABLE_FORMATTING, RecognizerIntent.FORMATTING_OPTIMIZE_QUALITY)
                         }
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,10)
                     }
